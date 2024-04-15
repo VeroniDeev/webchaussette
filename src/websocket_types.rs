@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
-use crate::utils::generate_key;
+use crate::{http_types::HttpStatus, utils::generate_key};
 
 pub const WEBSOCKET_GUID: &str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+pub const WEBSOCKET_VERSION: &str = "13";
 
 pub struct RequestStruct {
     pub method: String,
@@ -23,8 +24,10 @@ impl RequestStruct {
         let mut headers: HashMap<String, String> = HashMap::new();
         headers.insert(String::from("Connection"), String::from("Upgrade"));
         headers.insert(String::from("Upgrade"), String::from("websocket"));
-        headers.insert(String::from("Sec-WebSocket-Version"), String::from("13"));
-        headers.insert(String::from("Sec-WebSocket-Version"), String::from("13"));
+        headers.insert(
+            String::from("Sec-WebSocket-Version"),
+            String::from(WEBSOCKET_VERSION),
+        );
         headers.insert(String::from("Sec-WebSocket-Key"), generate_key());
 
         Self {
@@ -36,7 +39,7 @@ impl RequestStruct {
 }
 
 pub struct ResponseStruct {
-    pub status: String,
+    pub status: HttpStatus,
     pub headers: HashMap<String, String>,
 }
 
@@ -47,7 +50,7 @@ impl Default for ResponseStruct {
         headers.insert(String::from("Upgrade"), String::from("websocket"));
 
         Self {
-            status: String::from("HTTP/1.1 101 Switching Protocols"),
+            status: HttpStatus::SwitchingProtocols,
             headers,
         }
     }
