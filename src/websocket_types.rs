@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::utils::generate_key::generate_key;
+use crate::utils::generate_key;
+
+pub const WEBSOCKET_GUID: &str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
 pub struct RequestStruct {
     pub method: String,
@@ -8,7 +10,15 @@ pub struct RequestStruct {
     pub headers: HashMap<String, String>,
 }
 
-impl Default for RequestStruct {
+impl RequestStruct {
+    pub fn new() -> Self {
+        Self {
+            method: String::new(),
+            uri: String::new(),
+            headers: HashMap::new(),
+        }
+    }
+
     fn default() -> Self {
         let mut headers: HashMap<String, String> = HashMap::new();
         headers.insert(String::from("Connection"), String::from("Upgrade"));
@@ -28,4 +38,17 @@ impl Default for RequestStruct {
 pub struct ResponseStruct {
     pub status: String,
     pub headers: HashMap<String, String>,
+}
+
+impl Default for ResponseStruct {
+    fn default() -> Self {
+        let mut headers: HashMap<String, String> = HashMap::new();
+        headers.insert(String::from("Connection"), String::from("Upgrade"));
+        headers.insert(String::from("Upgrade"), String::from("websocket"));
+
+        Self {
+            status: String::from("HTTP/1.1 101 Switching Protocols"),
+            headers,
+        }
+    }
 }
