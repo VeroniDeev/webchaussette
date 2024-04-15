@@ -19,8 +19,9 @@ pub fn generate_accept(key: String) -> String {
 
     hasher.update(key_concatenate);
     let hashed = hasher.finalize();
-    let hex_hashed: String = hex::encode(hashed);
+    // let hex_hashed: String = hex::encode(hashed);
+    // println!("{}", hex_hashed);
 
-    let accept: String = general_purpose::STANDARD.encode(hex_hashed);
+    let accept: String = general_purpose::STANDARD.encode(hashed);
     accept
 }

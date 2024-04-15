@@ -1,4 +1,3 @@
-use bytes::Bytes;
 use httparse::{Header, Request, Status};
 use std::{collections::HashMap, error::Error, io::ErrorKind};
 
@@ -15,7 +14,7 @@ fn convert_headers(headers: &[Header<'_>]) -> HashMap<String, String> {
     hashmap
 }
 
-pub fn parse_request(data: Bytes) -> Result<RequestStruct, Box<dyn Error>> {
+pub fn parse_request(data: String) -> Result<RequestStruct, Box<dyn Error>> {
     let mut request_struct: RequestStruct = RequestStruct::new();
     let mut headers = [httparse::EMPTY_HEADER; 16];
     let mut request = Request::new(&mut headers);

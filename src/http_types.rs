@@ -17,7 +17,7 @@ impl HttpStatus {
             HttpStatus::NotFound => "404 Not Found",
             HttpStatus::InternalServerError => "500 Internal Server Error",
         };
-        let status = format!("{}{}", HTTP_VERSION, status_code);
+        let status = format!("{} {}", HTTP_VERSION, status_code);
         status
     }
 }
