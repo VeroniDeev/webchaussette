@@ -11,10 +11,12 @@ pub enum Opcode {
 
 impl Opcode {
     fn with_bits(data: [u8; 4]) -> Self {
-        let mut result = 0;
-        for element in data {
-            result = (result << 8) | element as u32;
+        let mut result: u64 = 0;
+        for bit in data {
+            result = (result << 1) | u64::from(bit);
         }
+
+        println!("-------------------{}", result);
 
         match result {
             0 => Self::Continuation,
@@ -43,7 +45,7 @@ impl PayloadLen {
             result = (result << 1) | u64::from(bit);
         }
 
-        result = result & 0xFF;
+        // result = result & 0xFF;
 
         match result {
             126 => Self::LengthU16(0),
