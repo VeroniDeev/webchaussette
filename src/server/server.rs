@@ -1,11 +1,11 @@
 use crate::{
+    frame::frame_types::Frame,
     handshake::{create_response, parse_request},
     utils::{build_response, generate_accept},
     websocket_types::ResponseStruct,
 };
-use std::{error::Error, sync::Arc};
+use std::sync::{Arc, Mutex, MutexGuard};
 
-use bytes::Bytes;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
@@ -21,9 +21,11 @@ impl Server {
         Self { listener }
     }
 
-    async fn handshake(&self, mut socket: TcpStream) {
+    async fn handshake(&self, socket: Arc<Mutex<TcpStream>>) {
         let mut buffer: [u8; 1024] = [0; 1024];
         let mut response: String = String::new();
+        let mut socket: MutexGuard<'_, TcpStream> = socket.lock().unwrap();
+
         match socket.read(&mut buffer).await {
             Ok(n) => {
                 let mut data: Vec<u8> = buffer.to_vec();
@@ -51,22 +53,32 @@ impl Server {
         socket.write(response.as_bytes()).await.unwrap();
     }
 
+    async fn receive_data(&self, socket: Arc<Mutex<TcpStream>>) {
+        let mut socket: MutexGuard<'_, TcpStream> = socket.lock().unwrap();
+        let mut buffer: [u8; 1024] = [0; 1024];
+
+        loop {
+            match socket.read(&mut buffer).await {
+                Ok(n) => {
+                    let mut data = buffer.to_vec();
+                    data.resize(n, 0);
+                    let mut frame: Frame = Frame::default();
+                    frame.default_from(data);
+                }
+                Err(_) => {}
+            }
+        }
+    }
+
     pub async fn run(self) {
         let self_arc: Arc<Self> = Arc::new(self);
-        loop {
-            let (mut socket, _) = self_arc.listener.accept().await.unwrap();
 
-            self_arc.handshake(socket).await;
+        loop {
+            let (socket, _) = self_arc.listener.accept().await.unwrap();
+            let socket_arc: Arc<Mutex<TcpStream>> = Arc::new(Mutex::new(socket));
+
+            self_arc.clone().handshake(socket_arc.clone()).await;
+            self_arc.receive_data(socket_arc).await;
         }
     }
 }
-
-// pub async fn server(url: &str) {
-//     let listener: TcpListener = TcpListener::bind(url).await.unwrap();
-
-//     loop {
-//         let (mut socket, _) = listener.accept().await.unwrap();
-
-//         tokio::spawn(async move { loop {} });
-//     }
-// }

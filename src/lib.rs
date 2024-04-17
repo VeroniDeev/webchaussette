@@ -1,3 +1,4 @@
+mod frame;
 mod handshake;
 mod http_types;
 pub mod server;
