@@ -55,10 +55,11 @@ impl Server {
     }
 
     async fn receive_data(&self, socket: Arc<Mutex<TcpStream>>) {
-        let mut buffer: [u8; 1024] = [0; 1024];
+        let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
         let mut frame: Frame = Frame::default();
         let mut size: usize = 0;
         let mut cur_size: usize = 0;
+        let mut data_vec: Vec<u8> = Vec::new();
 
         let mut socket: MutexGuard<'_, TcpStream> = socket.lock().await;
         loop {
@@ -75,18 +76,20 @@ impl Server {
                             return;
                         }
                     } else if cur_size < size {
+                        data_vec.append(&mut data);
+                    }
+                    if cur_size >= size {
+                        println!("{:?}", data.len());
+                        data_vec.append(&mut data);
                         if frame.mask {
-                            data = unmask_payload(&data, &frame.masking_key.unwrap());
+                            frame.payload_data =
+                                Some(unmask_payload(&data_vec, &frame.masking_key.unwrap()));
                         }
-                        frame.payload_data.append(&mut data);
-                    } else if cur_size >= size {
-                        if frame.mask {
-                            data = unmask_payload(&data, &frame.masking_key.unwrap());
-                        }
-                        frame.payload_data.append(&mut data);
+                        println!("{:?}", frame.payload_data.unwrap().len());
                         cur_size = 0;
                         size = 0;
                         frame = Frame::default();
+                        data_vec.clear();
                     }
                 }
                 Err(_) => {}

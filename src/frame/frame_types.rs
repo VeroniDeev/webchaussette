@@ -1,7 +1,5 @@
 use std::convert::TryInto;
 
-use crate::utils::unmask_payload;
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Opcode {
     Continuation,
@@ -80,7 +78,7 @@ pub struct Frame {
     pub mask: bool,
     pub payload_length: PayloadLen,
     pub masking_key: Option<[u8; 4]>,
-    pub payload_data: Vec<u8>,
+    pub payload_data: Option<Vec<u8>>,
 }
 
 impl Frame {
@@ -113,7 +111,7 @@ impl Frame {
                 mask: false,
                 payload_length: PayloadLen::LengthU8(16),
                 masking_key: None,
-                payload_data: "".as_bytes().to_vec(),
+                payload_data: Some(Vec::new()),
             };
         } else if self.opcode == Opcode::Ping {
             return Self {
@@ -125,7 +123,7 @@ impl Frame {
                 mask: false,
                 masking_key: None,
                 payload_length: PayloadLen::LengthU8(0),
-                payload_data: "".as_bytes().to_vec(),
+                payload_data: Some(Vec::new()),
             };
         }
 
@@ -136,20 +134,13 @@ impl Frame {
             PayloadLen::LengthU8(_) => {
                 self.payload_length = payload_len;
                 masking_array = data[3..7].try_into().unwrap();
-                self.payload_data = unmask_payload(
-                    data[8..].try_into().unwrap(),
-                    masking_array.as_slice().try_into().unwrap(),
-                );
+                self.payload_data = Some(Vec::new());
             }
 
             PayloadLen::LengthU16(_) => {
                 let length_array: &[u8] = &data[2..4];
                 masking_array = data[5..9].try_into().unwrap();
-                self.payload_data = unmask_payload(
-                    data[10..].try_into().unwrap(),
-                    masking_array.as_slice().try_into().unwrap(),
-                );
-
+                self.payload_data = Some(Vec::new());
                 let binary_length: String = format!("{:b}{:b}", length_array[0], length_array[1]);
                 let length: u16 = u16::from_str_radix(&binary_length, 2).unwrap();
                 self.payload_length = PayloadLen::LengthU16(length);
@@ -182,7 +173,7 @@ impl Default for Frame {
             mask: false,
             payload_length: PayloadLen::Unknow,
             masking_key: None,
-            payload_data: Vec::new(),
+            payload_data: Some(Vec::new()),
         }
     }
 }
