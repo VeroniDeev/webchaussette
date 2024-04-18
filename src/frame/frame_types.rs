@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Opcode {
     Continuation,
@@ -28,12 +30,25 @@ impl Opcode {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PayloadLen {
     LengthU8(u8),
     LengthU16(u16),
     LengthU64(u64),
     Unknow,
+}
+
+impl TryInto<usize> for PayloadLen {
+    type Error = &'static str;
+
+    fn try_into(self) -> Result<usize, Self::Error> {
+        match self {
+            PayloadLen::LengthU8(len) => Ok(len as usize),
+            PayloadLen::LengthU16(len) => Ok(len as usize),
+            PayloadLen::LengthU64(len) => Ok(len as usize),
+            PayloadLen::Unknow => Err("Conversion failed"),
+        }
+    }
 }
 
 impl PayloadLen {
@@ -53,7 +68,7 @@ impl PayloadLen {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Frame {
     pub is_final: bool,
     pub rsv1: bool,

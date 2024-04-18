@@ -2,7 +2,7 @@ use crate::{
     frame::frame_types::{Frame, Opcode},
     handshake::{create_response, parse_request},
     utils::{build_response, generate_accept},
-    websocket_types::ResponseStruct,
+    websocket_types::{ResponseStruct, BUFFER_SIZE},
 };
 use std::{collections::HashMap, sync::Arc};
 
@@ -60,19 +60,32 @@ impl Server {
 
     async fn receive_data(&self, socket: Arc<Mutex<TcpStream>>) {
         let mut buffer: [u8; 1024] = [0; 1024];
+        let mut frame: Frame = Frame::default();
+        let mut size: usize = 0;
+        let mut cur_size: usize = 0;
 
-        let mut socket = socket.lock().await;
+        let mut socket: MutexGuard<'_, TcpStream> = socket.lock().await;
         loop {
             match socket.read(&mut buffer).await {
                 Ok(n) => {
                     let mut data = buffer.to_vec();
                     data.resize(n, 0);
-                    let mut frame: Frame = Frame::default();
-                    frame.default_from(data);
-                    println!("{:?}", frame);
-                    if frame.opcode == Opcode::Close {
-                        return;
+                    if size == 0 {
+                        frame.default_from(data.clone());
+                        size = TryInto::<usize>::try_into(frame.payload_length.clone()).unwrap();
+                        println!("{:?}", size);
+
+                        if frame.opcode == Opcode::Close {
+                            return;
+                        }
+                    } else if cur_size < size {
+                        frame.payload_data.append(&mut data);
+                        println!("{}", frame.payload_data.len());
+                    } else if cur_size >= size {
+                        cur_size = 0;
+                        size = 0;
                     }
+                    cur_size += n;
                 }
                 Err(_) => {}
             }
