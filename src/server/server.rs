@@ -1,7 +1,7 @@
 use crate::{
     frame::frame_types::{Frame, Opcode},
     handshake::{create_response, parse_request},
-    utils::{build_response, generate_accept},
+    utils::{build_response, generate_accept, unmask_payload},
     websocket_types::{ResponseStruct, BUFFER_SIZE},
 };
 use std::{collections::HashMap, sync::Arc};
@@ -14,16 +14,12 @@ use tokio::{
 
 pub struct Server {
     listener: TcpListener,
-    incomplete_data: Arc<Mutex<HashMap<TcpStream, String>>>,
 }
 
 impl Server {
     pub async fn new(url: &str) -> Self {
         let listener: TcpListener = TcpListener::bind(url).await.unwrap();
-        Self {
-            listener,
-            incomplete_data: Arc::new(Mutex::new(HashMap::new())),
-        }
+        Self { listener }
     }
 
     async fn handshake(&self, socket: Arc<Mutex<TcpStream>>) {
@@ -68,24 +64,30 @@ impl Server {
         loop {
             match socket.read(&mut buffer).await {
                 Ok(n) => {
+                    cur_size += n;
                     let mut data = buffer.to_vec();
                     data.resize(n, 0);
                     if size == 0 {
                         frame.default_from(data.clone());
                         size = TryInto::<usize>::try_into(frame.payload_length.clone()).unwrap();
-                        println!("{:?}", size);
 
                         if frame.opcode == Opcode::Close {
                             return;
                         }
                     } else if cur_size < size {
+                        if frame.mask {
+                            data = unmask_payload(&data, &frame.masking_key.unwrap());
+                        }
                         frame.payload_data.append(&mut data);
-                        println!("{}", frame.payload_data.len());
                     } else if cur_size >= size {
+                        if frame.mask {
+                            data = unmask_payload(&data, &frame.masking_key.unwrap());
+                        }
+                        frame.payload_data.append(&mut data);
                         cur_size = 0;
                         size = 0;
+                        frame = Frame::default();
                     }
-                    cur_size += n;
                 }
                 Err(_) => {}
             }

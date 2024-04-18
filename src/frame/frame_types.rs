@@ -1,5 +1,7 @@
 use std::convert::TryInto;
 
+use crate::utils::unmask_payload;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Opcode {
     Continuation,
@@ -134,13 +136,20 @@ impl Frame {
             PayloadLen::LengthU8(_) => {
                 self.payload_length = payload_len;
                 masking_array = data[3..7].try_into().unwrap();
-                self.payload_data = data[8..].try_into().unwrap();
+                self.payload_data = unmask_payload(
+                    data[8..].try_into().unwrap(),
+                    masking_array.as_slice().try_into().unwrap(),
+                );
             }
 
             PayloadLen::LengthU16(_) => {
                 let length_array: &[u8] = &data[2..4];
                 masking_array = data[5..9].try_into().unwrap();
-                self.payload_data = data[10..].try_into().unwrap();
+                self.payload_data = unmask_payload(
+                    data[10..].try_into().unwrap(),
+                    masking_array.as_slice().try_into().unwrap(),
+                );
+
                 let binary_length: String = format!("{:b}{:b}", length_array[0], length_array[1]);
                 let length: u16 = u16::from_str_radix(&binary_length, 2).unwrap();
                 self.payload_length = PayloadLen::LengthU16(length);
