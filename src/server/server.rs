@@ -71,7 +71,6 @@ impl Server {
                     data.resize(n, 0);
                     let mut frame: Frame = Frame::default();
                     frame.default_from(data);
-                    println!("{:?}", frame);
                     if frame.opcode == Opcode::Close {
                         return;
                     }
@@ -79,6 +78,11 @@ impl Server {
                 Err(_) => {}
             }
         }
+    }
+
+    async fn close(&self, socket: Arc<Mutex<TcpStream>>) {
+        let mut socket: MutexGuard<'_, TcpStream> = socket.lock().unwrap();
+        socket.shutdown().await.expect("Close failed");
     }
 
     pub async fn run(self) {
@@ -89,7 +93,8 @@ impl Server {
             let socket_arc: Arc<Mutex<TcpStream>> = Arc::new(Mutex::new(socket));
 
             self_arc.clone().handshake(socket_arc.clone()).await;
-            self_arc.receive_data(socket_arc).await;
+            self_arc.clone().receive_data(socket_arc.clone()).await;
+            self_arc.close(socket_arc).await;
         }
     }
 }

@@ -16,8 +16,6 @@ impl Opcode {
             result = (result << 1) | u64::from(bit);
         }
 
-        println!("-------------------{}", result);
-
         match result {
             0 => Self::Continuation,
             1 => Self::Text,
