@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Opcode {
     Continuation,
     Text,
@@ -30,7 +30,7 @@ impl Opcode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PayloadLen {
     LengthU8(u8),
     LengthU16(u16),
@@ -55,7 +55,7 @@ impl PayloadLen {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Frame {
     pub is_final: bool,
     pub rsv1: bool,
@@ -69,13 +69,13 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn default_from(&mut self, data: Vec<u8>) {
+    pub fn default_from(&mut self, data: Vec<u8>) -> Self {
+        let mut first_bits: [u8; 8] = [0; 8];
+        let mut second_bits: [u8; 8] = [0; 8];
+
         let first_octal: u8 = data[0];
         let second_octal: u8 = data[1];
         let mut masking_array: Vec<u8> = Vec::new();
-
-        let mut first_bits: [u8; 8] = [0; 8];
-        let mut second_bits: [u8; 8] = [0; 8];
 
         for i in 0..8 {
             first_bits[i] = (first_octal >> (7 - i)) & 1;
@@ -87,6 +87,32 @@ impl Frame {
         self.rsv2 = first_bits[2] != 0;
         self.rsv3 = first_bits[3] != 0;
         self.opcode = Opcode::with_bits(first_bits[4..8].try_into().unwrap());
+
+        if self.opcode == Opcode::Close {
+            return Self {
+                is_final: true,
+                rsv1: false,
+                rsv2: false,
+                rsv3: false,
+                opcode: Opcode::Close,
+                mask: false,
+                payload_length: PayloadLen::LengthU8(16),
+                masking_key: None,
+                payload_data: "".as_bytes().to_vec(),
+            };
+        } else if self.opcode == Opcode::Ping {
+            return Self {
+                is_final: true,
+                rsv1: false,
+                rsv2: false,
+                rsv3: false,
+                opcode: Opcode::Pong,
+                mask: false,
+                masking_key: None,
+                payload_length: PayloadLen::LengthU8(0),
+                payload_data: "".as_bytes().to_vec(),
+            };
+        }
 
         self.mask = second_bits[0] != 0;
         let payload_len: PayloadLen = PayloadLen::with_size(second_bits[1..8].try_into().unwrap());
@@ -119,6 +145,7 @@ impl Frame {
         if self.mask {
             self.masking_key = Some(masking_array.try_into().unwrap());
         }
+        self.clone()
     }
 }
 

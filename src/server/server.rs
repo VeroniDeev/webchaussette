@@ -1,10 +1,13 @@
 use crate::{
-    frame::frame_types::Frame,
+    frame::frame_types::{Frame, Opcode},
     handshake::{create_response, parse_request},
     utils::{build_response, generate_accept},
     websocket_types::ResponseStruct,
 };
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex, MutexGuard},
+};
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -13,12 +16,16 @@ use tokio::{
 
 pub struct Server {
     listener: TcpListener,
+    incomplete_data: Arc<Mutex<HashMap<TcpStream, String>>>,
 }
 
 impl Server {
     pub async fn new(url: &str) -> Self {
         let listener: TcpListener = TcpListener::bind(url).await.unwrap();
-        Self { listener }
+        Self {
+            listener,
+            incomplete_data: Arc::new(Mutex::new(HashMap::new())),
+        }
     }
 
     async fn handshake(&self, socket: Arc<Mutex<TcpStream>>) {
@@ -64,6 +71,10 @@ impl Server {
                     data.resize(n, 0);
                     let mut frame: Frame = Frame::default();
                     frame.default_from(data);
+                    println!("{:?}", frame);
+                    if frame.opcode == Opcode::Close {
+                        return;
+                    }
                 }
                 Err(_) => {}
             }
