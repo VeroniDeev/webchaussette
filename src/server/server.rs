@@ -4,14 +4,12 @@ use crate::{
     utils::{build_response, generate_accept},
     websocket_types::ResponseStruct,
 };
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex, MutexGuard},
-};
+use std::{collections::HashMap, sync::Arc};
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
+    sync::{Mutex, MutexGuard},
 };
 
 pub struct Server {
@@ -31,7 +29,7 @@ impl Server {
     async fn handshake(&self, socket: Arc<Mutex<TcpStream>>) {
         let mut buffer: [u8; 1024] = [0; 1024];
         let mut response: String = String::new();
-        let mut socket: MutexGuard<'_, TcpStream> = socket.lock().unwrap();
+        let mut socket = socket.lock().await;
 
         match socket.read(&mut buffer).await {
             Ok(n) => {
@@ -61,9 +59,9 @@ impl Server {
     }
 
     async fn receive_data(&self, socket: Arc<Mutex<TcpStream>>) {
-        let mut socket: MutexGuard<'_, TcpStream> = socket.lock().unwrap();
         let mut buffer: [u8; 1024] = [0; 1024];
 
+        let mut socket = socket.lock().await;
         loop {
             match socket.read(&mut buffer).await {
                 Ok(n) => {
@@ -71,6 +69,7 @@ impl Server {
                     data.resize(n, 0);
                     let mut frame: Frame = Frame::default();
                     frame.default_from(data);
+                    println!("{:?}", frame);
                     if frame.opcode == Opcode::Close {
                         return;
                     }
@@ -81,7 +80,7 @@ impl Server {
     }
 
     async fn close(&self, socket: Arc<Mutex<TcpStream>>) {
-        let mut socket: MutexGuard<'_, TcpStream> = socket.lock().unwrap();
+        let mut socket: MutexGuard<'_, TcpStream> = socket.lock().await;
         socket.shutdown().await.expect("Close failed");
     }
 
@@ -92,9 +91,15 @@ impl Server {
             let (socket, _) = self_arc.listener.accept().await.unwrap();
             let socket_arc: Arc<Mutex<TcpStream>> = Arc::new(Mutex::new(socket));
 
-            self_arc.clone().handshake(socket_arc.clone()).await;
-            self_arc.clone().receive_data(socket_arc.clone()).await;
-            self_arc.close(socket_arc).await;
+            let self_arc_clone = Arc::clone(&self_arc);
+            let _ = tokio::spawn(async move {
+                self_arc_clone.clone().handshake(socket_arc.clone()).await;
+                self_arc_clone
+                    .clone()
+                    .receive_data(socket_arc.clone())
+                    .await;
+                self_arc_clone.close(socket_arc).await;
+            });
         }
     }
 }
