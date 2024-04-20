@@ -1,5 +1,8 @@
 use crate::{
-    frame::frame_types::{Frame, Opcode},
+    frame::{
+        self,
+        frame_types::{Frame, Opcode},
+    },
     handshake::{create_response, parse_request},
     utils::{build_response, generate_accept, unmask_payload},
     websocket_types::{ResponseStruct, BUFFER_SIZE},
@@ -56,43 +59,43 @@ impl Server {
 
     async fn receive_data(&self, socket: Arc<Mutex<TcpStream>>) {
         let mut buffer: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
-        let mut frame: Frame = Frame::default();
         let mut size: usize = 0;
-        let mut cur_size: usize = 0;
         let mut data_vec: Vec<u8> = Vec::new();
+        let mut frame: Frame = Frame::default();
+        let mut cur_size: usize = 0;
 
-        let mut socket: MutexGuard<'_, TcpStream> = socket.lock().await;
+        let mut socket_guard = socket.lock().await;
+        let socket = &mut *socket_guard;
+
         loop {
             match socket.read(&mut buffer).await {
                 Ok(n) => {
-                    cur_size += n;
                     let mut data = buffer.to_vec();
                     data.resize(n, 0);
-                    if size == 0 {
-                        frame.default_from(data.clone());
-                        size = TryInto::<usize>::try_into(frame.payload_length.clone()).unwrap();
 
-                        if frame.opcode == Opcode::Close {
-                            return;
-                        }
-                    } else if cur_size < size {
-                        data_vec.append(&mut data);
+                    if size == 0 {
+                        frame.default_header(data.clone());
+                        size = TryInto::<usize>::try_into(frame.payload_length.clone()).unwrap();
                     }
-                    if cur_size >= size {
-                        println!("{:?}", data.len());
-                        data_vec.append(&mut data);
-                        if frame.mask {
-                            frame.payload_data =
-                                Some(unmask_payload(&data_vec, &frame.masking_key.unwrap()));
-                        }
-                        println!("{:?}", frame.payload_data.unwrap().len());
-                        cur_size = 0;
-                        size = 0;
-                        frame = Frame::default();
-                        data_vec.clear();
-                    }
+
+                    data_vec.append(&mut data);
+                    cur_size += n;
                 }
-                Err(_) => {}
+                Err(_) => unimplemented!(),
+            }
+
+            if cur_size >= size {
+                frame.default_from(data_vec.clone());
+
+                println!(
+                    "{:?}",
+                    String::from_utf8_lossy(&frame.payload_data.unwrap())
+                );
+
+                cur_size = 0;
+                size = 0;
+                data_vec.clear();
+                frame = Frame::default();
             }
         }
     }

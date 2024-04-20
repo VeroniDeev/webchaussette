@@ -1,5 +1,7 @@
 use std::convert::TryInto;
 
+use crate::utils::unmask_payload;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Opcode {
     Continuation,
@@ -82,13 +84,12 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn default_from(&mut self, data: Vec<u8>) -> Self {
+    pub fn default_header(&mut self, data: Vec<u8>) -> Self {
         let mut first_bits: [u8; 8] = [0; 8];
         let mut second_bits: [u8; 8] = [0; 8];
 
         let first_octal: u8 = data[0];
         let second_octal: u8 = data[1];
-        let mut masking_array: Vec<u8> = Vec::new();
 
         for i in 0..8 {
             first_bits[i] = (first_octal >> (7 - i)) & 1;
@@ -133,15 +134,12 @@ impl Frame {
         match payload_len {
             PayloadLen::LengthU8(_) => {
                 self.payload_length = payload_len;
-                masking_array = data[3..7].try_into().unwrap();
-                self.payload_data = Some(Vec::new());
             }
 
             PayloadLen::LengthU16(_) => {
                 let length_array: &[u8] = &data[2..4];
-                masking_array = data[5..9].try_into().unwrap();
-                self.payload_data = Some(Vec::new());
-                let binary_length: String = format!("{:b}{:b}", length_array[0], length_array[1]);
+                let binary_length: String =
+                    format!("{:08b}{:08b}", length_array[0], length_array[1]);
                 let length: u16 = u16::from_str_radix(&binary_length, 2).unwrap();
                 self.payload_length = PayloadLen::LengthU16(length);
             }
@@ -152,12 +150,35 @@ impl Frame {
             }
 
             // TODO
-            _ => {}
+            _ => {
+                unimplemented!();
+            }
+        }
+        self.clone()
+    }
+    pub fn default_from(&mut self, data: Vec<u8>) -> Self {
+        match self.payload_length {
+            PayloadLen::LengthU8(_) => {
+                self.masking_key = Some(data[2..6].try_into().unwrap());
+                self.payload_data = Some(unmask_payload(&data[6..], &self.masking_key.unwrap()))
+            }
+
+            PayloadLen::LengthU16(_) => {
+                self.masking_key = Some(data[4..8].try_into().unwrap());
+                self.payload_data = Some(unmask_payload(&data[8..], &self.masking_key.unwrap()));
+            }
+
+            // TODO
+            PayloadLen::LengthU64(_) => {
+                unimplemented!();
+            }
+
+            // TODO
+            _ => {
+                unimplemented!();
+            }
         }
 
-        if self.mask {
-            self.masking_key = Some(masking_array.try_into().unwrap());
-        }
         self.clone()
     }
 }
