@@ -66,7 +66,7 @@ impl Server {
 
         loop {
             match socket.read(&mut buffer).await {
-                Ok(n) => {
+                Ok(n) if n > 0 => {
                     let mut data = buffer.to_vec();
                     data.resize(n, 0);
 
@@ -82,6 +82,9 @@ impl Server {
 
                     data_vec.append(&mut data);
                     cur_size += n;
+                }
+                Ok(_) => {
+                    break;
                 }
                 Err(_) => unimplemented!(),
             }
