@@ -1,7 +1,7 @@
 use crate::{
     frame::{
         self,
-        frame_types::{Frame, Opcode},
+        frame_types::{Frame, Opcode, PayloadLen},
     },
     handshake::{create_response, parse_request},
     utils::{build_response, generate_accept, unmask_payload},
@@ -76,6 +76,8 @@ impl Server {
                     if size == 0 {
                         frame.default_header(data.clone());
                         if frame.opcode == Opcode::Close {
+                            frame.payload_length = PayloadLen::LengthU8(0);
+                            let _ = socket.write(&frame.to_bytes()).await;
                             return;
                         }
                         size = TryInto::<usize>::try_into(frame.payload_length.clone()).unwrap();

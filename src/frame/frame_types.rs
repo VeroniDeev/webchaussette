@@ -30,6 +30,18 @@ impl Opcode {
             _ => Self::Unknow,
         }
     }
+
+    fn to_bytes(&self) -> u8 {
+        match self {
+            Opcode::Continuation => 0b0000,
+            Opcode::Text => 0b0001,
+            Opcode::Binary => 0b0010,
+            Opcode::Close => 0b1000,
+            Opcode::Ping => 0b1001,
+            Opcode::Pong => 0b1010,
+            Opcode::Unknow => 0b1111,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -59,8 +71,6 @@ impl PayloadLen {
         for bit in data {
             result = (result << 1) | u64::from(bit);
         }
-
-        // result = result & 0xFF;
 
         match result {
             126 => Self::LengthU16(0),
@@ -112,7 +122,7 @@ impl Frame {
                 mask: false,
                 payload_length: PayloadLen::LengthU8(16),
                 masking_key: None,
-                payload_data: Some(Vec::new()),
+                payload_data: None,
             };
         } else if self.opcode == Opcode::Ping {
             return Self {
@@ -124,7 +134,7 @@ impl Frame {
                 mask: false,
                 masking_key: None,
                 payload_length: PayloadLen::LengthU8(0),
-                payload_data: Some(Vec::new()),
+                payload_data: None,
             };
         }
 
@@ -180,6 +190,53 @@ impl Frame {
         }
 
         self.clone()
+    }
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes: Vec<u8> = Vec::new();
+        let mut first_octal: u8 = 0;
+        let mut second_octal: Vec<u8> = Vec::new();
+
+        first_octal |= if self.is_final { 1 } else { 0 } << 7;
+        first_octal |= if self.rsv1 { 1 } else { 0 } << 6;
+        first_octal |= if self.rsv2 { 1 } else { 0 } << 5;
+        first_octal |= if self.rsv3 { 1 } else { 0 } << 4;
+        first_octal |= self.opcode.to_bytes();
+
+        println!("{:?}", self.opcode.to_bytes());
+        println!("{:?}", first_octal.to_be_bytes());
+
+        let byte_mask: u8 = if self.mask { 1 } else { 0 };
+        let mut byte_payload_length: Vec<u8> = Vec::new();
+
+        println!("{:?}", self);
+
+        match self.payload_length {
+            PayloadLen::LengthU8(len) => byte_payload_length.push(len),
+            PayloadLen::LengthU16(len) => {
+                byte_payload_length = len.to_be_bytes().try_into().unwrap();
+            }
+            // TODO
+            PayloadLen::LengthU64(_) => {
+                unimplemented!();
+            }
+            // TODO
+            _ => {
+                unimplemented!();
+            }
+        }
+
+        second_octal.push(byte_mask);
+        second_octal.append(&mut byte_payload_length);
+
+        bytes.push(first_octal);
+        bytes.append(&mut second_octal);
+
+        if self.mask {
+            bytes.append(&mut self.masking_key.unwrap().try_into().unwrap());
+        }
+
+        bytes.append(&mut self.payload_data.clone().unwrap().try_into().unwrap());
+        bytes
     }
 }
 
