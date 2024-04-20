@@ -75,6 +75,9 @@ impl Server {
 
                     if size == 0 {
                         frame.default_header(data.clone());
+                        if frame.opcode == Opcode::Close {
+                            return;
+                        }
                         size = TryInto::<usize>::try_into(frame.payload_length.clone()).unwrap();
                     }
 
