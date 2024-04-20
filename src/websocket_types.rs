@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{http_types::HttpStatus, utils::generate_key};
 
 pub const WEBSOCKET_GUID: &str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-pub const WEBSOCKET_VERSION: &str = "13";
+const WEBSOCKET_VERSION: &str = "13";
 pub const BUFFER_SIZE: usize = 1024;
 
 #[derive(Debug, Clone)]

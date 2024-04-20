@@ -1,13 +1,10 @@
 use crate::{
-    frame::{
-        self,
-        frame_types::{Frame, Opcode, PayloadLen},
-    },
+    frame::frame_types::{Frame, Opcode, PayloadLen},
     handshake::{create_response, parse_request},
-    utils::{build_response, generate_accept, unmask_payload},
+    utils::{build_response, generate_accept},
     websocket_types::{ResponseStruct, BUFFER_SIZE},
 };
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
