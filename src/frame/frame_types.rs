@@ -202,13 +202,8 @@ impl Frame {
         first_octal |= if self.rsv3 { 1 } else { 0 } << 4;
         first_octal |= self.opcode.to_bytes();
 
-        println!("{:?}", self.opcode.to_bytes());
-        println!("{:?}", first_octal.to_be_bytes());
-
         let byte_mask: u8 = if self.mask { 1 } else { 0 };
         let mut byte_payload_length: Vec<u8> = Vec::new();
-
-        println!("{:?}", self);
 
         match self.payload_length {
             PayloadLen::LengthU8(len) => byte_payload_length.push(len),

@@ -25,7 +25,7 @@ impl Server {
     async fn handshake(&self, socket: Arc<Mutex<TcpStream>>) {
         let mut buffer: [u8; 1024] = [0; 1024];
         let mut response: String = String::new();
-        let mut socket = socket.lock().await;
+        let mut socket: MutexGuard<'_, TcpStream> = socket.lock().await;
 
         match socket.read(&mut buffer).await {
             Ok(n) => {
@@ -44,6 +44,7 @@ impl Server {
                         let response_builded: String = build_response(response_struct);
                         response = response_builded;
                     }
+                    // TODO
                     Err(err) => println!("{:?}", err),
                 }
             }
@@ -61,13 +62,13 @@ impl Server {
         let mut frame: Frame = Frame::default();
         let mut cur_size: usize = 0;
 
-        let mut socket_guard = socket.lock().await;
-        let socket = &mut *socket_guard;
+        let mut socket_guard: MutexGuard<'_, TcpStream> = socket.lock().await;
+        let socket: &mut TcpStream = &mut *socket_guard;
 
         loop {
             match socket.read(&mut buffer).await {
                 Ok(n) if n > 0 => {
-                    let mut data = buffer.to_vec();
+                    let mut data: Vec<u8> = buffer.to_vec();
                     data.resize(n, 0);
 
                     if size == 0 {
@@ -92,11 +93,6 @@ impl Server {
             if cur_size >= size {
                 frame.default_from(data_vec.clone());
 
-                println!(
-                    "{:?}",
-                    String::from_utf8_lossy(&frame.payload_data.unwrap())
-                );
-
                 cur_size = 0;
                 size = 0;
                 data_vec.clear();
@@ -117,7 +113,7 @@ impl Server {
             let (socket, _) = self_arc.listener.accept().await.unwrap();
             let socket_arc: Arc<Mutex<TcpStream>> = Arc::new(Mutex::new(socket));
 
-            let self_arc_clone = Arc::clone(&self_arc);
+            let self_arc_clone: Arc<Server> = Arc::clone(&self_arc);
             let _ = tokio::spawn(async move {
                 self_arc_clone.clone().handshake(socket_arc.clone()).await;
                 self_arc_clone
