@@ -194,7 +194,7 @@ impl Frame {
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::new();
         let mut first_octal: u8 = 0;
-        let mut second_octal: Vec<u8> = Vec::new();
+        let mut second_octal: u8 = 0;
 
         first_octal |= if self.is_final { 1 } else { 0 } << 7;
         first_octal |= if self.rsv1 { 1 } else { 0 } << 6;
@@ -202,13 +202,20 @@ impl Frame {
         first_octal |= if self.rsv3 { 1 } else { 0 } << 4;
         first_octal |= self.opcode.to_bytes();
 
-        let byte_mask: u8 = if self.mask { 1 } else { 0 };
+        second_octal |= if self.mask { 1 } else { 0 } << 7;
         let mut byte_payload_length: Vec<u8> = Vec::new();
+        bytes.push(first_octal);
 
         match self.payload_length {
-            PayloadLen::LengthU8(len) => byte_payload_length.push(len),
+            PayloadLen::LengthU8(len) => {
+                second_octal |= len;
+                bytes.push(second_octal);
+            }
             PayloadLen::LengthU16(len) => {
-                byte_payload_length = len.to_be_bytes().try_into().unwrap();
+                byte_payload_length = len.to_be_bytes().to_vec();
+                second_octal |= 126_u8;
+                bytes.push(second_octal);
+                bytes.append(&mut byte_payload_length);
             }
             // TODO
             PayloadLen::LengthU64(_) => {
@@ -219,12 +226,6 @@ impl Frame {
                 unimplemented!();
             }
         }
-
-        second_octal.push(byte_mask);
-        second_octal.append(&mut byte_payload_length);
-
-        bytes.push(first_octal);
-        bytes.append(&mut second_octal);
 
         if self.mask {
             bytes.append(&mut self.masking_key.unwrap().try_into().unwrap());
