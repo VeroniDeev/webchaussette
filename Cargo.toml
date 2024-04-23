@@ -4,6 +4,7 @@ version = "1.0.0"
 authors = ["Santha Veroni <zoubheir@gmail.com>"]
 edition = "2021"
 license = "MIT"
+description = "Fast, powerful, and easy-to-set-up WebSocket library"
 
 
 [dependencies]
