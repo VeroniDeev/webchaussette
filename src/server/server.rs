@@ -1,4 +1,9 @@
-use crate::{frame::frame_types::{Frame, Opcode, PayloadLen}, handshake::{create_response, parse_request}, utils::{build_response, generate_accept}, websocket_types::{ResponseStruct, BUFFER_SIZE}};
+use crate::{
+    frame::frame_types::{Frame, Opcode, PayloadLen},
+    handshake::{create_response, parse_request},
+    utils::{build_response, generate_accept},
+    websocket_types::{ResponseStruct, BUFFER_SIZE},
+};
 use std::{ops::Deref, sync::Arc};
 
 use tokio::{
@@ -11,13 +16,16 @@ use super::{EventHandler, Public, Types};
 
 pub struct Server {
     listener: TcpListener,
-    event_listener: Option<Box<dyn EventHandler + Send>>
+    event_listener: Option<Box<dyn EventHandler + Send>>,
 }
 
 impl Server {
     pub async fn new(url: &str) -> Self {
         let listener: TcpListener = TcpListener::bind(url).await.unwrap();
-        Self { listener, event_listener: None }
+        Self {
+            listener,
+            event_listener: None,
+        }
     }
 
     async fn handshake(&self, socket: Arc<Mutex<TcpStream>>) {
@@ -60,7 +68,6 @@ impl Server {
         let mut frame: Frame = Frame::default();
         let mut cur_size: usize = 0;
 
-        let socket_clone: Arc<Mutex<TcpStream>> = socket.clone();
         let mut socket_guard: MutexGuard<'_, TcpStream> = socket.lock().await;
         let socket: &mut TcpStream = &mut *socket_guard;
 
@@ -92,11 +99,16 @@ impl Server {
             if cur_size >= size {
                 frame.default_from(data_vec.clone());
 
-                if self.event_listener.is_some(){
-                    let event: &Box<dyn EventHandler + Send> = self.event_listener.as_ref().unwrap();
-                    let mut public: Public = Public { socket: socket_clone.clone(), closed: false, message: Types::from_opcode(frame.opcode, frame.payload_data.unwrap()) };
+                if self.event_listener.is_some() {
+                    let event: &Box<dyn EventHandler + Send> =
+                        self.event_listener.as_ref().unwrap();
+                    let mut public: Public = Public {
+                        socket,
+                        closed: false,
+                        message: Types::from_opcode(frame.opcode, frame.payload_data.unwrap()),
+                    };
                     event.on_message(&mut public).await;
-    
+
                     if public.closed == true {
                         return;
                     }
@@ -138,7 +150,7 @@ impl Server {
         }
     }
 
-    pub fn set_handler(&mut self, handler: Box<dyn EventHandler + Send>){
+    pub fn set_handler(&mut self, handler: Box<dyn EventHandler + Send>) {
         self.event_listener = Some(handler);
     }
 }

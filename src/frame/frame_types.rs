@@ -78,6 +78,18 @@ impl PayloadLen {
             _ => Self::LengthU8(result as u8),
         }
     }
+
+    pub fn from_size(len: usize) -> Self {
+        match len {
+            0..=125 => Self::LengthU8(len.try_into().unwrap()),
+            126..=65535 => Self::LengthU16(len.try_into().unwrap()),
+
+            // TODO: With 64bit
+            _ => {
+                unimplemented!()
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

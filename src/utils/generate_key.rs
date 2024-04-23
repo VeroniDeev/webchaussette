@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose, Engine};
-use rand::{rngs::ThreadRng, RngCore};
+use rand::{rngs::ThreadRng, thread_rng, Rng, RngCore};
 use sha1::{Digest, Sha1};
 
 use crate::websocket_types::WEBSOCKET_GUID;
