@@ -4,7 +4,7 @@ use crate::{
     utils::{build_response, generate_accept},
     websocket_types::{ResponseStruct, BUFFER_SIZE},
 };
-use std::{ops::Deref, sync::Arc};
+use std::sync::Arc;
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},

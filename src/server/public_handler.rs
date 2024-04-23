@@ -1,10 +1,6 @@
-use std::{error::Error, sync::Arc};
+use std::error::Error;
 
-use tokio::{
-    io::AsyncWriteExt,
-    net::TcpStream,
-    sync::{Mutex, MutexGuard},
-};
+use tokio::{io::AsyncWriteExt, net::TcpStream};
 
 use crate::frame::frame_types::{Frame, Opcode, PayloadLen};
 

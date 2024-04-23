@@ -1,11 +1,11 @@
 use base64::{engine::general_purpose, Engine};
-use rand::{rngs::ThreadRng, thread_rng, Rng, RngCore};
+use rand::{rngs::ThreadRng, thread_rng, RngCore};
 use sha1::{Digest, Sha1};
 
 use crate::websocket_types::WEBSOCKET_GUID;
 
 pub fn generate_key() -> String {
-    let mut rng: ThreadRng = rand::thread_rng();
+    let mut rng: ThreadRng = thread_rng();
     let mut random_bytes: [u8; 16] = [0u8; 16];
     rng.fill_bytes(&mut random_bytes);
 
