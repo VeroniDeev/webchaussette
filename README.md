@@ -4,7 +4,6 @@
 [![Version](https://img.shields.io/crates/v/Webchaussette.svg)](https://crates.io/crates/Webchaussette)
 [![Documentation](https://docs.rs/webchaussette/badge.svg)](https://docs.rs/webchaussette)
 [![License](https://img.shields.io/crates/l/webchaussette.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://github.com/VeroniDeev/webchaussette/workflows/CI/badge.svg)](https://github.com/VeroniDeev/webchaussette/actions)
 
 ## Installation
 
