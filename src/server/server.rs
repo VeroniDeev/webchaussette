@@ -3,6 +3,7 @@ use crate::{
     handshake::{create_response, parse_request},
     utils::{build_response, generate_accept},
     websocket_types::{ResponseStruct, BUFFER_SIZE},
+    RequestStruct,
 };
 use std::sync::Arc;
 
@@ -32,6 +33,7 @@ impl Server {
         let mut buffer: [u8; 1024] = [0; 1024];
         let mut response: String = String::new();
         let mut socket: MutexGuard<'_, TcpStream> = socket.lock().await;
+        let mut request: RequestStruct = RequestStruct::new();
 
         match socket.read(&mut buffer).await {
             Ok(n) => {
@@ -39,6 +41,7 @@ impl Server {
                 data.resize(n, 0);
                 match parse_request(String::from_utf8_lossy(&data).to_string()) {
                     Ok(parsed) => {
+                        request = parsed.clone();
                         let mut response_struct: ResponseStruct =
                             create_response(parsed.clone()).unwrap();
                         response_struct.headers.insert(
@@ -57,6 +60,10 @@ impl Server {
             Err(_) => {
                 return;
             }
+        }
+        if self.event_listener.is_some() {
+            let event: &Box<dyn EventHandler + Send> = self.event_listener.as_ref().unwrap();
+            event.on_join(request).await;
         }
         socket.write(response.as_bytes()).await.unwrap();
     }
