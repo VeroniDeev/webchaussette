@@ -3,6 +3,7 @@ pub const HTTP_VERSION: &str = "HTTP/1.1";
 pub enum HttpStatus {
     SwitchingProtocols,
     BadRequest,
+    Unauthorized,
     Forbidden,
     NotFound,
     InternalServerError,
@@ -13,6 +14,7 @@ impl HttpStatus {
         let status_code = match self {
             HttpStatus::SwitchingProtocols => "101 Switching Protocols",
             HttpStatus::BadRequest => "400 Bad Request",
+            HttpStatus::Unauthorized => "401 Unauthorized",
             HttpStatus::Forbidden => "403 Forbidden",
             HttpStatus::NotFound => "404 Not Found",
             HttpStatus::InternalServerError => "500 Internal Server Error",

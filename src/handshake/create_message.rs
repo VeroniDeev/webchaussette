@@ -12,6 +12,12 @@ pub fn create_response(request: RequestStruct) -> Result<ResponseStruct, Box<dyn
         response
             .headers
             .insert(String::from("Sec-WebSocket-Accept"), generate_accept(key));
+        response
+            .headers
+            .insert(String::from("Connection"), String::from("Upgrade"));
+        response
+            .headers
+            .insert(String::from("Upgrade"), String::from("websocket"));
     }
 
     Ok(response)

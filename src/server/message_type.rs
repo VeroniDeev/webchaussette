@@ -1,20 +1,17 @@
 use crate::frame::frame_types::Opcode;
 
 #[derive(Debug)]
-pub enum Types{
+pub enum Types {
     String(String),
-    Binary(Vec<u8>)
+    Binary(Vec<u8>),
+    None,
 }
 
-impl Types{
-    pub fn from_opcode( opcode: Opcode, data: Vec<u8>) -> Self{
+impl Types {
+    pub fn from_opcode(opcode: Opcode, data: Vec<u8>) -> Self {
         match opcode {
-            Opcode::Text => {
-                Self::String(String::from_utf8_lossy(&data).to_string())
-            },
-            Opcode::Binary => {
-                Self::Binary(data)
-            },
+            Opcode::Text => Self::String(String::from_utf8_lossy(&data).to_string()),
+            Opcode::Binary => Self::Binary(data),
 
             // TODO
             _ => {
@@ -23,4 +20,3 @@ impl Types{
         }
     }
 }
-

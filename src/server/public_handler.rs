@@ -1,8 +1,13 @@
-use std::error::Error;
+use std::{collections::HashMap, error::Error};
 
 use tokio::{io::AsyncWriteExt, net::TcpStream};
 
-use crate::frame::frame_types::{Frame, Opcode, PayloadLen};
+use crate::{
+    frame::frame_types::{Frame, Opcode, PayloadLen},
+    http_types::HttpStatus,
+    utils::build_response,
+    websocket_types::ResponseStruct,
+};
 
 use super::Types;
 
@@ -14,6 +19,22 @@ pub struct Public<'a> {
 }
 
 impl<'a> Public<'a> {
+    pub async fn close_handshake(&mut self, status: HttpStatus) -> Result<(), Box<dyn Error>> {
+        let response_struct: ResponseStruct = ResponseStruct {
+            status,
+            headers: HashMap::new(),
+        };
+
+        let response: String = build_response(response_struct);
+
+        self.closed = true;
+
+        match self.socket.write(response.as_bytes()).await {
+            Ok(_) => Ok(()),
+            Err(err) => Err(Box::new(err)),
+        }
+    }
+
     pub async fn send_string(&mut self, message: String) -> Result<(), Box<dyn Error>> {
         let message_vec: Vec<u8> = message.as_bytes().to_vec();
 

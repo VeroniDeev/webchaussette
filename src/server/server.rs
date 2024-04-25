@@ -29,7 +29,7 @@ impl Server {
         }
     }
 
-    async fn handshake(&self, socket: Arc<Mutex<TcpStream>>) {
+    async fn handshake(&self, socket: Arc<Mutex<TcpStream>>) -> bool {
         let mut buffer: [u8; 1024] = [0; 1024];
         let mut response: String = String::new();
         let mut socket: MutexGuard<'_, TcpStream> = socket.lock().await;
@@ -58,14 +58,25 @@ impl Server {
                 }
             }
             Err(_) => {
-                return;
+                return false;
             }
         }
         if self.event_listener.is_some() {
+            let mut public: Public = Public {
+                socket: &mut socket,
+                message: Types::None,
+                closed: false,
+            };
+
             let event: &Box<dyn EventHandler + Send> = self.event_listener.as_ref().unwrap();
-            event.on_join(request).await;
+            event.on_join(request, &mut public).await;
+
+            if public.closed {
+                return false;
+            }
         }
         socket.write(response.as_bytes()).await.unwrap();
+        return true;
     }
 
     async fn receive_data(&self, socket: Arc<Mutex<TcpStream>>) {
@@ -116,7 +127,7 @@ impl Server {
                     };
                     event.on_message(&mut public).await;
 
-                    if public.closed == true {
+                    if public.closed {
                         return;
                     }
                 }
@@ -147,7 +158,9 @@ impl Server {
 
             let self_arc_clone: Arc<Server> = Arc::clone(&self_arc);
             let _ = tokio::spawn(async move {
-                self_arc_clone.clone().handshake(socket_arc.clone()).await;
+                if !self_arc_clone.clone().handshake(socket_arc.clone()).await {
+                    return;
+                }
                 self_arc_clone
                     .clone()
                     .receive_data(socket_arc.clone())
